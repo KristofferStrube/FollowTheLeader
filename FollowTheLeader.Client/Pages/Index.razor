@@ -1,0 +1,74 @@
+﻿@page "/"
+@inject IConfiguration Config
+
+<PageTitle>Follow The Leader 🛣️</PageTitle>
+
+@if (game is null) return;
+
+@if (game.IsStarted)
+{
+    <svg width="100%" height="100%" viewBox="0 0 100 100">
+        @foreach(Player player in game.Players)
+        {
+            <circle r="5" fill="@player.Color" cx="@player.Position.X" cy="@player.Position.Y"></circle>
+        }
+    </svg>
+}
+else
+{
+    <h1>
+        Follow The Leader 🛣️
+    </h1>
+    <h2>
+        Players
+    </h2>
+    <h3>
+        <ul>
+            @foreach (Player player in game.Players)
+            {
+                if (player.ConnectionID == hubConnection.ConnectionId)
+                {
+                    <li style="color:@player.Color;font-weight:800;text-decoration:underline;">@player.Color</li>
+                }
+                else
+                {
+                    <li style="color:@player.Color;">@player.Color</li>
+                }
+            }
+        </ul>
+    </h3>
+    <button class="btn btn-success btn-lg" @onclick="StartGame">Start Game</button>
+}
+
+@code {
+    HubConnection hubConnection;
+    private Game? game;
+    int width;
+    int height;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var signalrUrl = Config.GetConnectionString("SignalRUrl");
+        hubConnection = new HubConnectionBuilder().WithUrl(signalrUrl!).WithAutomaticReconnect().Build();
+
+        await hubConnection.StartAsync();
+
+        hubConnection.On<Game>("Update", (game) =>
+        {
+            this.game = game;
+            StateHasChanged();
+        });
+
+        hubConnection.On("Direction", () =>
+        {
+            return -1;
+        });
+
+        await hubConnection.SendAsync("Join");
+    }
+
+    private async Task StartGame()
+    {
+        await hubConnection.SendAsync("StartGame");
+    }
+}
