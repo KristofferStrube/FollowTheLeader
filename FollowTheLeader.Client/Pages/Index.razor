@@ -1,6 +1,7 @@
 ﻿@page "/"
 @inject IConfiguration Config
 @inject IJSRuntime JSRuntime
+@inject IWebAssemblyHostEnvironment Environment
 
 <PageTitle>Follow The Leader 🛣️</PageTitle>
 
@@ -71,7 +72,10 @@ else
                             {
                                 if (player.ConnectionID == hubConnection.ConnectionId)
                                 {
-                                    <li style="color:@player.Color;font-weight:800;text-decoration:underline;">@player.Name</li>
+                                    <li style="color:@player.Color;font-weight:800;text-decoration:underline;">
+                                        @player.Name
+                                        <span @onclick="ReRollMyName">🎲</span>
+                                    </li>
                                 }
                                 else
                                 {
@@ -147,7 +151,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        var signalrUrl = Config.GetConnectionString("SignalRUrl");
+        var signalrUrl = Environment.IsProduction() ? Config.GetConnectionString("ProductionSignalRUrl") : Config.GetConnectionString("DevelopSignalRUrl");
         hubConnection = new HubConnectionBuilder().WithUrl(signalrUrl!).WithAutomaticReconnect().Build();
 
         hubConnection.On<Game>("Update", (game) =>
@@ -276,5 +280,10 @@ else
             result += $"S {(points[^2].X * smoothness + points[^1].X * (1 - smoothness)).AsString()} {(points[^2].Y * smoothness + points[^1].Y * (1 - smoothness)).AsString()} {points[^1].X.AsString()} {points[^1].Y.AsString()} ";
         }
         return result;
+    }
+
+    private async Task ReRollMyName()
+    {
+        await hubConnection.SendAsync("ReRollName");
     }
 }

@@ -166,6 +166,13 @@ public class GameHub : Hub
         }
     }
 
+    public async Task ReRollName()
+    {
+        var player = StaticStorage.Games.First().Players.First(p => p.ConnectionID == Context.ConnectionId);
+        player.Name = Faker.Name.First();
+        await Clients.All.SendAsync("Update", StaticStorage.Games.First());
+    }
+
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         await base.OnDisconnectedAsync(exception);
