@@ -18,6 +18,11 @@ public class GameHub : Hub
 
     public async Task Join()
     {
+        if (StaticStorage.Games.First().Players.Count is 0)
+        {
+            StaticStorage.Games.Clear();
+            StaticStorage.Games.Add(new() { Seed = Random.Shared.NextDouble() });
+        }
         var sounds = frequenzyPairs[Random.Shared.Next(frequenzyPairs.Count)];
         Player newPlayer = new()
         {
