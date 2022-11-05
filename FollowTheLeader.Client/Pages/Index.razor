@@ -6,7 +6,7 @@
 
 @if (game is null) return;
 
-@if (game.IsStarted)
+@if (game.IsStarted && haveJoined)
 {
     <div style="position:relative;">
         @if (game.Rounds.Any(r => r.Time > 0))
@@ -82,35 +82,44 @@ else
                     </h3>
                 </div>
             </div>
-            <div style="display:flex;justify-content:center;">
-                <button class="btn btn-success btn-lg" @onclick="StartGame">Start Game</button>
-            </div>
-            @if (game.ScoreBoard is not null)
+            @if (haveJoined)
             {
                 <div style="display:flex;justify-content:center;">
-                    <div>
-                        <h2 style="text-align:center;margin-top:20px;">
-                            Scoreboard
-                            <hr />
-                        </h2>
-                        <h3>
-                            @foreach (var x in game.ScoreBoard.OrderByDescending(p => p.Value).Select((Entry, Index) => new { Entry, Index }))
-                            {
-                                if (game.Players.Any(p => p.ConnectionID == x.Entry.Key))
+                    <button class="btn btn-success btn-lg" @onclick="StartGame">Start Game</button>
+                </div>
+                @if (game.ScoreBoard is not null)
+                {
+                    <div style="display:flex;justify-content:center;">
+                        <div>
+                            <h2 style="text-align:center;margin-top:20px;">
+                                Scoreboard
+                                <hr />
+                            </h2>
+                            <h3>
+                                @foreach (var x in game.ScoreBoard.OrderByDescending(p => p.Value).Select((Entry, Index) => new { Entry, Index }))
                                 {
-                                    var style = x.Entry.Key == hubConnection.ConnectionId ? "font-weight:800;text-decoration:underline;" : "";
-                                    <div class="row" style="font-family:monospace;width:400px;">
-                                        <div class="col" style="@style;color:@game.Players.First(p => p.ConnectionID == x.Entry.Key).Color;">
-                                            <nobr><b style="margin-right:10px">@(x.Index + 1).</b> @(game.Players.First(p => p.ConnectionID == x.Entry.Key).Name):</nobr>
+                                    if (game.Players.Any(p => p.ConnectionID == x.Entry.Key))
+                                    {
+                                        var style = x.Entry.Key == hubConnection.ConnectionId ? "font-weight:800;text-decoration:underline;" : "";
+                                        <div class="row" style="font-family:monospace;width:400px;">
+                                            <div class="col" style="@style;color:@game.Players.First(p => p.ConnectionID == x.Entry.Key).Color;">
+                                                <nobr><b style="margin-right:10px">@(x.Index + 1).</b> @(game.Players.First(p => p.ConnectionID == x.Entry.Key).Name):</nobr>
+                                            </div>
+                                            <div class="col">
+                                                @x.Entry.Value
+                                            </div>
                                         </div>
-                                        <div class="col">
-                                            @x.Entry.Value
-                                        </div>
-                                    </div>
+                                    }
                                 }
-                            }
-                        </h3>
+                            </h3>
+                        </div>
                     </div>
+                }
+            }
+            else
+            {
+                <div style="display:flex;justify-content:center;">
+                    <h2>One game is already active. It will be done in @game.Rounds.Sum(r => r.Time).AsString() seconds.</h2>
                 </div>
             }
         </div>
@@ -124,6 +133,7 @@ else
     HashSet<string> keys = new();
     List<Obstacle> obstacles = new();
     bool imStarter;
+    bool haveJoined = false;
     double minXWithPadding;
     double minYWithPadding;
     double widthWithPadding;
@@ -178,12 +188,16 @@ else
 
         await hubConnection.StartAsync();
 
-        await hubConnection.InvokeAsync("Join");
-
         await Task.Run(async () =>
         {
             while (true)
             {
+                if (!haveJoined && await hubConnection.InvokeAsync<bool>("ReadyToJoin"))
+                {
+                    await hubConnection.SendAsync("Join");
+                    haveJoined = true;
+                }
+
                 var direction = 0;
                 if (keys.Contains("ArrowLeft") && keys.Contains("ArrowRight"))
                 {

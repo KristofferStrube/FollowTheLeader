@@ -16,13 +16,18 @@ public class GameHub : Hub
         (164.8, 329.6)
     };
 
-    public async Task Join()
+    public async Task<bool> ReadyToJoin()
     {
         if (StaticStorage.Games.First().Players.Count is 0)
         {
             StaticStorage.Games.Clear();
             StaticStorage.Games.Add(new() { Seed = Random.Shared.NextDouble() });
         }
+        return StaticStorage.Games.First().Rounds.Sum(r => r.Time) <= 0;
+    }
+
+    public async Task Join()
+    {
         var sounds = frequenzyPairs[Random.Shared.Next(frequenzyPairs.Count)];
         Player newPlayer = new()
         {
