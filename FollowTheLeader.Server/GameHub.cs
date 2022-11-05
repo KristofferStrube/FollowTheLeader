@@ -20,6 +20,26 @@ public class GameHub : Hub
         await Clients.All.SendAsync("Update", StaticStorage.Games.First());
     }
 
+    public void Direction(int direction)
+    {
+        var player = StaticStorage.Games.First().Players.First(p => p.ConnectionID == Context.ConnectionId);
+        player.Heading += direction / 20.0;
+    }
+
+    public void Speed(int speed)
+    {
+        var player = StaticStorage.Games.First().Players.First(p => p.ConnectionID == Context.ConnectionId);
+
+        if (StaticStorage.Games.First().Rounds.First(r => r.Time > 0).Leader == Context.ConnectionId)
+        {
+            player.Speed = 2;
+        }
+        else
+        {
+            player.Speed = 2 + speed;
+        }
+    }
+
     public async Task StartGame()
     {
         StaticStorage.Games.First().IsStarted = true;
@@ -36,8 +56,6 @@ public class GameHub : Hub
         var time = DateTime.Now;
         while (StaticStorage.Games.First().Rounds.Any(r => r.Time > 0))
         {
-            await UpdateHeadingsAsync();
-            await UpdateSpeedAsync();
             Move();
             Collide();
             GivePoints();
@@ -58,31 +76,6 @@ public class GameHub : Hub
         StaticStorage.Games.First().ScoreBoard = StaticStorage.Games.First().Players.ToDictionary(p => p.ConnectionID, p => StaticStorage.Games.First().Rounds.Sum(r => r.Points[p.ConnectionID]));
 
         await Clients.All.SendAsync("Update", StaticStorage.Games.First());
-    }
-
-    private async Task UpdateHeadingsAsync()
-    {
-        var directions = await Task.WhenAll(StaticStorage.Games.First().Players.Select(async p => await Clients.Client(p.ConnectionID).InvokeAsync<int>("Direction", CancellationToken.None)));
-        for (int j = 0; j < directions.Length; j++)
-        {
-            StaticStorage.Games.First().Players[j].Heading += directions[j] / 20.0;
-        }
-    }
-
-    private async Task UpdateSpeedAsync()
-    {
-        var speeds = await Task.WhenAll(StaticStorage.Games.First().Players.Select(async p => await Clients.Client(p.ConnectionID).InvokeAsync<int>("Speed", CancellationToken.None)));
-        for (int j = 0; j < speeds.Length; j++)
-        {
-            if (StaticStorage.Games.First().Rounds.First(r => r.Time > 0).Leader == StaticStorage.Games.First().Players[j].ConnectionID)
-            {
-                StaticStorage.Games.First().Players[j].Speed = 2;
-            }
-            else
-            {
-                StaticStorage.Games.First().Players[j].Speed = 2 + speeds[j];
-            }
-        }
     }
 
     private void Move()

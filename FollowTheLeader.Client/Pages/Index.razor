@@ -156,42 +156,46 @@ else
                 bgY = minYWithPadding;
                 bgHeight = heightWithPadding;
             }
-            PopulateObstacles();
             StateHasChanged();
-        });
-
-        hubConnection.On("Direction", () =>
-        {
-            if (keys.Contains("ArrowLeft") && keys.Contains("ArrowRight"))
-            {
-                return 0;
-            }
-            else if (keys.Contains("ArrowRight"))
-            {
-                return -1;
-            }
-            else if (keys.Contains("ArrowLeft"))
-            {
-                return 1;
-            }
-            return 0;
-        });
-        hubConnection.On("Speed", () =>
-        {
-            if (keys.Contains("ArrowDown"))
-            {
-                return -1;
-            }
-            else if (keys.Contains("ArrowUp"))
-            {
-                return 1;
-            }
-            return 0;
         });
 
         await hubConnection.StartAsync();
 
-        await hubConnection.SendAsync("Join");
+        await hubConnection.InvokeAsync("Join");
+
+        await Task.Run(async () =>
+        {
+            while (true)
+            {
+                var direction = 0;
+                if (keys.Contains("ArrowLeft") && keys.Contains("ArrowRight"))
+                {
+                    direction = 0;
+                }
+                else if (keys.Contains("ArrowRight"))
+                {
+                    direction = -1;
+                }
+                else if (keys.Contains("ArrowLeft"))
+                {
+                    direction = 1;
+                }
+                await hubConnection.SendAsync("Direction", direction);
+
+                var speed = 0;
+                if (keys.Contains("ArrowDown"))
+                {
+                    speed = -1;
+                }
+                else if (keys.Contains("ArrowUp"))
+                {
+                    speed = 1;
+                }
+                return 0;
+                await hubConnection.SendAsync("Speed", direction);
+                await Task.Delay(20);
+            }
+        })
     }
 
     private async Task StartGame()
@@ -228,32 +232,5 @@ else
             result += $"S {(points[^2].X * smoothness + points[^1].X * (1 - smoothness)).AsString()} {(points[^2].Y * smoothness + points[^1].Y * (1 - smoothness)).AsString()} {points[^1].X.AsString()} {points[^1].Y.AsString()} ";
         }
         return result;
-    }
-
-    private void PopulateObstacles()
-    {
-        obstacles.Clear();
-        var x = minXWithPadding;
-        var y = minYWithPadding;
-        var offsetX = minXWithPadding % (20 + game.Seed * 40);
-        while (x < minXWithPadding + widthWithPadding)
-        {
-            var offsetY = y % (20 + game.Seed * 40);
-            while (y < minYWithPadding + heightWithPadding)
-            {
-                obstacles.Add(new()
-                    {
-                        Position = new()
-                        {
-                            X = x + ((20 + game.Seed * 40) - offsetX),
-                            Y = y + ((20 + game.Seed * 40) - offsetY)
-                        }
-                    });
-                y += (20 + game.Seed * 40);
-                x += 2;
-            }
-            y = minYWithPadding + offsetY;
-            x += 20;
-        }
     }
 }
