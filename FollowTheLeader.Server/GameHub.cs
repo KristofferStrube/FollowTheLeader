@@ -11,8 +11,9 @@ public class GameHub : Hub
         Player newPlayer = new()
         {
             ConnectionID = Context.ConnectionId,
-            Color = $"#{Random.Shared.Next(999)}"
+            Color = $"#{Random.Shared.Next(999)}",
         };
+        newPlayer.Body.Enqueue(newPlayer.Head);
         StaticStorage.Games.First().Players.Add(newPlayer);
         await Clients.All.SendAsync("Update", StaticStorage.Games.First());
     }
@@ -22,12 +23,13 @@ public class GameHub : Hub
         StaticStorage.Games.First().IsStarted = true;
         await Clients.All.SendAsync("Update", StaticStorage.Games.First());
 
-        for (int i = 0; i < 0; i++)
+        while(true)
         {
             await UpdateHeadingsAsync();
+            await UpdateSpeedAsync();
             Move();
             await Clients.All.SendAsync("Update", StaticStorage.Games.First());
-            await Task.Delay(100);
+            await Task.Delay(20);
         }
     }
 
@@ -36,21 +38,40 @@ public class GameHub : Hub
         var directions = await Task.WhenAll(StaticStorage.Games.First().Players.Select(async p => await Clients.Client(p.ConnectionID).InvokeAsync<int>("Direction", CancellationToken.None)));
         for (int j = 0; j < directions.Length; j++)
         {
-            StaticStorage.Games.First().Players[j].Heading += directions[j] / 10.0;
+            StaticStorage.Games.First().Players[j].Heading += directions[j] / 20.0;
+        }
+    }
+
+    private async Task UpdateSpeedAsync()
+    {
+        var speeds = await Task.WhenAll(StaticStorage.Games.First().Players.Select(async p => await Clients.Client(p.ConnectionID).InvokeAsync<int>("Speed", CancellationToken.None)));
+        for (int j = 0; j < speeds.Length; j++)
+        {
+            StaticStorage.Games.First().Players[j].Speed = 2 + speeds[j];
         }
     }
 
     private void Move()
     {
-        foreach(var player in StaticStorage.Games.First().Players)
+        foreach (var player in StaticStorage.Games.First().Players)
         {
-            player.Position = ((int)(player.Position.X + Math.Sin(player.Heading) * player.Speed), (int)(player.Position.Y + Math.Cos(player.Heading) * player.Speed));
+            if (player.Body.Count > 9)
+            {
+                player.Body.Dequeue();
+            }
+            player.Head = new()
+            {
+                X = player.Head.X + Math.Sin(player.Heading) * player.Speed,
+                Y = player.Head.Y + Math.Cos(player.Heading) * player.Speed
+            };
+            player.Body.Enqueue(player.Head);
         }
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         await base.OnDisconnectedAsync(exception);
+        if (StaticStorage.Games.First().Players.Where(p => p.ConnectionID == Context.ConnectionId).Count() is 0) return;
         StaticStorage.Games.First().Players.Remove(
             StaticStorage.Games.First().Players
                 .Where(p => p.ConnectionID == Context.ConnectionId)

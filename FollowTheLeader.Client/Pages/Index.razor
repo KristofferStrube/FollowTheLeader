@@ -7,10 +7,16 @@
 
 @if (game.IsStarted)
 {
-    <svg width="100%" height="100%" viewBox="0 0 100 100">
-        @foreach(Player player in game.Players)
+    <svg @ref="@svgElement" @onkeydown=KeyDown @onkeyup=KeyUp width="100vw" height="100vh" viewBox="@minXWithPadding.AsString() @minYWithPadding.AsString() @widthWithPadding.AsString() @heightWithPadding.AsString()" tabindex="-1">
+        <filter id="noise" x="0%" y="0%" width="100%" height="100%">
+            <feTurbulence baseFrequency="0.1"></feTurbulence>
+        </filter>
+
+        <rect x="@bgX.AsString()" y="@bgY.AsString()" width="@bgWidth.AsString()" height="@bgHeight.AsString()" filter="url(#noise)" fill="none"></rect>
+        @foreach (Player player in game.Players)
         {
-            <circle r="5" fill="@player.Color" cx="@player.Position.X" cy="@player.Position.Y"></circle>
+            <path stroke-width="2" stroke="@player.Color" stroke-linecap="round" d="@BodyPath(player.Body.ToArray())" fill="transparent"></path>
+            <circle r="2" fill="@player.Color" cx="@player.Head.X.AsString()" cy="@player.Head.Y.AsString()"></circle>
         }
     </svg>
 }
@@ -41,10 +47,21 @@ else
 }
 
 @code {
+    ElementReference svgElement;
     HubConnection hubConnection;
-    private Game? game;
-    int width;
-    int height;
+    Game? game;
+    HashSet<string> keys = new();
+    List<Obstacle> obstacles = new();
+    double minXWithPadding;
+    double minYWithPadding;
+    double widthWithPadding;
+    double heightWithPadding;
+
+    //background things
+    double bgX;
+    double bgY;
+    double bgWidth;
+    double bgHeight;
 
     protected override async Task OnInitializedAsync()
     {
@@ -56,12 +73,58 @@ else
         hubConnection.On<Game>("Update", (game) =>
         {
             this.game = game;
+            minXWithPadding = game.Players.SelectMany(p => p.Body.Select(b => b.X)).Min() - 10;
+            minYWithPadding = game.Players.SelectMany(p => p.Body.Select(b => b.Y)).Min() - 10;
+            widthWithPadding = game.Players.SelectMany(p => p.Body.Select(b => b.X)).Max() + 10 - minXWithPadding;
+            heightWithPadding = game.Players.SelectMany(p => p.Body.Select(b => b.Y)).Max() + 10 - minYWithPadding;
+            if (widthWithPadding / heightWithPadding < 21.0 / 9.0)
+            {
+                // Height is too small
+                var offset = heightWithPadding * 21.0 / 9.0 / 2;
+                bgX = minXWithPadding - offset;
+                bgWidth = widthWithPadding + offset * 2;
+                bgY = minYWithPadding;
+                bgHeight = heightWithPadding;
+            }
+            else
+            {
+                // Width is too small
+                bgX = minXWithPadding;
+                bgWidth = widthWithPadding;
+                bgY = minYWithPadding;
+                bgHeight = heightWithPadding;
+            }
+            PopulateObstacles();
             StateHasChanged();
         });
 
         hubConnection.On("Direction", () =>
         {
-            return -1;
+            if (keys.Contains("ArrowLeft") && keys.Contains("ArrowRight"))
+            {
+                return 0;
+            }
+            else if (keys.Contains("ArrowRight"))
+            {
+                return -1;
+            }
+            else if (keys.Contains("ArrowLeft"))
+            {
+                return 1;
+            }
+            return 0;
+        });
+        hubConnection.On("Speed", () =>
+        {
+            if (keys.Contains("ArrowDown"))
+            {
+                return -1;
+            }
+            else if (keys.Contains("ArrowUp"))
+            {
+                return 1;
+            }
+            return 0;
         });
 
         await hubConnection.SendAsync("Join");
@@ -70,5 +133,63 @@ else
     private async Task StartGame()
     {
         await hubConnection.SendAsync("StartGame");
+        StateHasChanged();
+        await Task.Delay(500);
+        await svgElement.FocusAsync();
+    }
+
+    private void KeyDown(KeyboardEventArgs eventArgs)
+    {
+        keys.Add(eventArgs.Code);
+    }
+
+    private void KeyUp(KeyboardEventArgs eventArgs)
+    {
+        keys.Remove(eventArgs.Code);
+    }
+
+    private string BodyPath(Position[] points)
+    {
+        // Parameter for smoothness of path in interval [0, 0.5]
+        double smoothness = 1.0 / 3.0;
+
+        var result = "";
+        if (points.Length >= 2)
+        {
+            result = $"M {points[0].X.AsString()} {points[0].Y.AsString()} ";
+            for (int i = 1; i < points.Length - 1; i++)
+            {
+                result += $"S {(points[i - 1].X * smoothness / 2 + points[i].X - points[i + 1].X * smoothness / 2).AsString()} {(points[i - 1].Y * smoothness / 2 + points[i].Y - points[i + 1].Y * smoothness / 2).AsString()} {points[i].X.AsString()} {points[i].Y.AsString()} ";
+            }
+            result += $"S {(points[^2].X * smoothness + points[^1].X * (1 - smoothness)).AsString()} {(points[^2].Y * smoothness + points[^1].Y * (1 - smoothness)).AsString()} {points[^1].X.AsString()} {points[^1].Y.AsString()} ";
+        }
+        return result;
+    }
+
+    private void PopulateObstacles()
+    {
+        obstacles.Clear();
+        var x = minXWithPadding;
+        var y = minYWithPadding;
+        var offsetX = minXWithPadding % (20 + game.Seed * 40);
+        while (x < minXWithPadding + widthWithPadding)
+        {
+            var offsetY = y % (20 + game.Seed * 40);
+            while (y < minYWithPadding + heightWithPadding)
+            {
+                obstacles.Add(new()
+                    {
+                        Position = new()
+                        {
+                            X = x + ((20 + game.Seed * 40) - offsetX),
+                            Y = y + ((20 + game.Seed * 40) - offsetY)
+                        }
+                    });
+                y += (20 + game.Seed * 40);
+                x += 2;
+            }
+            y = minYWithPadding + offsetY;
+            x += 20;
+        }
     }
 }
