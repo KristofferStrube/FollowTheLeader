@@ -72,7 +72,8 @@ public class GameHub : Hub
             StaticStorage.Games.First().Rounds.Add(new()
             {
                 Leader = StaticStorage.Games.First().Players[i % StaticStorage.Games.First().Players.Count].ConnectionID,
-                Points = StaticStorage.Games.First().Players.ToDictionary(p => p.ConnectionID, _ => 0)
+                Points = StaticStorage.Games.First().Players.ToDictionary(p => p.ConnectionID, _ => 0),
+                Time = Round.StartTime,
             });
         }
         foreach (var player in StaticStorage.Games.First().Players)
