@@ -15,8 +15,9 @@
         <rect x="@bgX.AsString()" y="@bgY.AsString()" width="@bgWidth.AsString()" height="@bgHeight.AsString()" filter="url(#noise)" fill="none"></rect>
         @foreach (Player player in game.Players)
         {
+            var isMe = player.ConnectionID == hubConnection.ConnectionId;
             <path stroke-width="2" stroke="@player.Color" stroke-linecap="round" d="@BodyPath(player.Body.ToArray())" fill="transparent"></path>
-            <circle r="2" fill="@player.Color" cx="@player.Head.X.AsString()" cy="@player.Head.Y.AsString()"></circle>
+            <circle r="2" fill="@player.Color" cx="@player.Head.X.AsString()" cy="@player.Head.Y.AsString()" stroke="white" stroke-width="@(isMe ? "0.5" : "0")"></circle>
         }
     </svg>
 }
