@@ -119,6 +119,7 @@ else
     Game? game;
     HashSet<string> keys = new();
     List<Obstacle> obstacles = new();
+    bool imStarter;
     double minXWithPadding;
     double minYWithPadding;
     double widthWithPadding;
@@ -159,6 +160,10 @@ else
                 bgY = minYWithPadding;
                 bgHeight = heightWithPadding;
             }
+            if (game.ScoreBoard is not null)
+            {
+                imStarter = false;
+            }
             StateHasChanged();
         });
 
@@ -194,8 +199,21 @@ else
                 {
                     speed = 1;
                 }
-                return 0;
-                await hubConnection.SendAsync("Speed", direction);
+                await hubConnection.SendAsync("Speed", speed);
+
+                if (imStarter)
+                {
+                    if (game.Rounds.Any(r => r.Time > 0))
+                    {
+                        await hubConnection.SendAsync("Iterate");
+                        Console.WriteLine(game.Rounds.First(r => r.Time > 0).Time);
+                    }
+                    else
+                    {
+                        await hubConnection.SendAsync("Stop");
+                    }
+                }
+
                 await Task.Delay(20);
             }
         });
@@ -207,6 +225,7 @@ else
         StateHasChanged();
         await Task.Delay(500);
         await svgElement.FocusAsync();
+        imStarter = true;
     }
 
     private void KeyDown(KeyboardEventArgs eventArgs)

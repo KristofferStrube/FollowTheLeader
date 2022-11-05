@@ -2,6 +2,7 @@
 using FollowTheLeader.Shared;
 using Microsoft.AspNetCore.SignalR;
 using Faker;
+using Faker.Resources;
 
 namespace FollowTheLeader.Server;
 
@@ -22,15 +23,17 @@ public class GameHub : Hub
 
     public void Direction(int direction)
     {
-        var player = StaticStorage.Games.First().Players.First(p => p.ConnectionID == Context.ConnectionId);
+        var player = StaticStorage.Games.First().Players.FirstOrDefault(p => p.ConnectionID == Context.ConnectionId);
+        if (player is null) return;
         player.Heading += direction / 20.0;
     }
 
     public void Speed(int speed)
     {
-        var player = StaticStorage.Games.First().Players.First(p => p.ConnectionID == Context.ConnectionId);
+        var player = StaticStorage.Games.First().Players.FirstOrDefault(p => p.ConnectionID == Context.ConnectionId);
+        if (player is null) return;
 
-        if (StaticStorage.Games.First().Rounds.First(r => r.Time > 0).Leader == Context.ConnectionId)
+        if (StaticStorage.Games.First().Rounds.FirstOrDefault(r => r.Time > 0)?.Leader == Context.ConnectionId)
         {
             player.Speed = 2;
         }
@@ -43,7 +46,7 @@ public class GameHub : Hub
     public async Task StartGame()
     {
         StaticStorage.Games.First().IsStarted = true;
-        for(int i = 0; i < StaticStorage.Games.First().Players.Count * 2; i++)
+        for (int i = 0; i < StaticStorage.Games.First().Players.Count * 2; i++)
         {
             StaticStorage.Games.First().Rounds.Add(new()
             {
@@ -51,30 +54,25 @@ public class GameHub : Hub
                 Points = StaticStorage.Games.First().Players.ToDictionary(p => p.ConnectionID, _ => 0)
             });
         }
+        StaticStorage.Games.First().ScoreBoard = null;
         await Clients.All.SendAsync("Update", StaticStorage.Games.First());
+    }
 
-        var time = DateTime.Now;
-        while (StaticStorage.Games.First().Rounds.Any(r => r.Time > 0))
-        {
-            Move();
-            Collide();
-            GivePoints();
-            var diff = (int)(DateTime.Now - time).TotalMilliseconds;
-            if (diff < 20)
-            {
-                await Task.Delay(20 - diff);
-                StaticStorage.Games.First().Rounds.First(r => r.Time > 0).Time -= 0.020m;
-            }
-            else
-            {
-                StaticStorage.Games.First().Rounds.First(r => r.Time > 0).Time -= diff / 1000.0m;
-            }
-            time = DateTime.Now;
-            await Clients.All.SendAsync("Update", StaticStorage.Games.First());
-        }
+    public async Task Iterate()
+    {
+        if (!StaticStorage.Games.First().Rounds.Any(r => r.Time > 0)) return;
+        Move();
+        Collide();
+        GivePoints();
+        StaticStorage.Games.First().Rounds.First(r => r.Time > 0).Time -= 0.020m;
+        await Clients.All.SendAsync("Update", StaticStorage.Games.First());
+    }
+
+    public async Task Stop()
+    {
         StaticStorage.Games.First().IsStarted = false;
         StaticStorage.Games.First().ScoreBoard = StaticStorage.Games.First().Players.ToDictionary(p => p.ConnectionID, p => StaticStorage.Games.First().Rounds.Sum(r => r.Points[p.ConnectionID]));
-
+        StaticStorage.Games.First().Rounds = new List<Round>();
         await Clients.All.SendAsync("Update", StaticStorage.Games.First());
     }
 
@@ -123,11 +121,12 @@ public class GameHub : Hub
 
     private void GivePoints()
     {
-        var round = StaticStorage.Games.First().Rounds.First(r => r.Time > 0);
+        var round = StaticStorage.Games.First().Rounds.FirstOrDefault(r => r.Time > 0);
+        if (round is null) return;
         var players = StaticStorage.Games.First().Players;
         var leader = players.First(p => p.ConnectionID == round.Leader);
         var largestDist = 0;
-        foreach(var player in players)
+        foreach (var player in players)
         {
             var dist = (int)Math.Sqrt(Math.Pow(player.Head.X - leader.Head.X, 2) + Math.Pow(player.Head.Y - leader.Head.Y, 2));
             largestDist = dist > largestDist ? dist : largestDist;
