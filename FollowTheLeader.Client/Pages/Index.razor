@@ -1,5 +1,6 @@
 ﻿@page "/"
 @inject IConfiguration Config
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Follow The Leader 🛣️</PageTitle>
 
@@ -167,6 +168,11 @@ else
             StateHasChanged();
         });
 
+        hubConnection.On("Sound", async (double freq, int durr) =>
+        {
+            await JSRuntime.InvokeVoidAsync("sound", freq, durr);
+        });
+
         await hubConnection.StartAsync();
 
         await hubConnection.InvokeAsync("Join");
@@ -206,7 +212,6 @@ else
                     if (game.Rounds.Any(r => r.Time > 0))
                     {
                         await hubConnection.SendAsync("Iterate");
-                        Console.WriteLine(game.Rounds.First(r => r.Time > 0).Time);
                     }
                     else
                     {

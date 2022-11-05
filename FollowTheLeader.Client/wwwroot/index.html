@@ -60,6 +60,19 @@
         <a class="dismiss">🗙</a>
     </div>
     <script src="_framework/blazor.webassembly.js"></script>
+    <script>
+        function sound(freq, durr) {
+            var context = new AudioContext()
+            var o = context.createOscillator()
+            var g = context.createGain()
+            o.connect(g)
+            o.type = "sawtooth";
+            o.frequency.value = freq;
+            g.connect(context.destination);
+            g.gain.exponentialRampToValueAtTime(0.00001, context.currentTime + durr)
+            o.start(0)
+        }
+    </script>
 </body>
 
 </html>

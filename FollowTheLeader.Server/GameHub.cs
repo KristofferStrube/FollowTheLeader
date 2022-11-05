@@ -8,13 +8,23 @@ namespace FollowTheLeader.Server;
 
 public class GameHub : Hub
 {
+    public static List<(double, double)> frequenzyPairs = new() {
+        (138.6, 277.2),
+        (146.8, 293.7),
+        (155.6, 311.1),
+        (164.8, 329.6)
+    };
+
     public async Task Join()
     {
+        var sounds = frequenzyPairs[Random.Shared.Next(frequenzyPairs.Count)];
         Player newPlayer = new()
         {
             Name = Faker.Name.First(),
             ConnectionID = Context.ConnectionId,
             Color = $"hsl({Random.Shared.Next(360)}deg 70% 70%)",
+            CollideSoundFrequenzy = sounds.Item1,
+            MoveSoundFrequenzy = sounds.Item2,
         };
         newPlayer.Body.Enqueue(newPlayer.Head);
         StaticStorage.Games.First().Players.Add(newPlayer);
@@ -54,17 +64,22 @@ public class GameHub : Hub
                 Points = StaticStorage.Games.First().Players.ToDictionary(p => p.ConnectionID, _ => 0)
             });
         }
+        foreach (var player in StaticStorage.Games.First().Players)
+        {
+            player.Head = new() { X = 50 + Random.Shared.NextDouble(), Y = 50 + Random.Shared.NextDouble() };
+        }
         StaticStorage.Games.First().ScoreBoard = null;
         await Clients.All.SendAsync("Update", StaticStorage.Games.First());
     }
 
     public async Task Iterate()
     {
-        if (!StaticStorage.Games.First().Rounds.Any(r => r.Time > 0)) return;
+        var round = StaticStorage.Games.First().Rounds.FirstOrDefault(r => r.Time > 0);
+        if (round is null) return;
         Move();
-        Collide();
+        await Collide();
         GivePoints();
-        StaticStorage.Games.First().Rounds.First(r => r.Time > 0).Time -= 0.020m;
+        round.Time -= 0.020m;
         await Clients.All.SendAsync("Update", StaticStorage.Games.First());
     }
 
@@ -98,7 +113,7 @@ public class GameHub : Hub
         player.Body.Enqueue(player.Head);
     }
 
-    private void Collide()
+    private async Task Collide()
     {
         foreach (var primary in StaticStorage.Games.First().Players)
         {
@@ -112,6 +127,7 @@ public class GameHub : Hub
                     {
                         primary.Heading = Math.Atan((primary.Head.X - part.X) / (primary.Head.Y - part.Y));
                         primary.Speed = 10;
+                        await Clients.Client(secondary.ConnectionID).SendAsync("Sound", primary.CollideSoundFrequenzy, 1);
                         MovePlayer(primary);
                     }
                 }

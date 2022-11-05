@@ -8,6 +8,8 @@ public class Player
     public double Heading { get; set; } = 45;
     public double Speed { get; set; } = 2;
     public bool IsLeader { get; set; }
+    public double MoveSoundFrequenzy { get; set; }
+    public double CollideSoundFrequenzy { get; set; }
     public Queue<Position> Body { get; set; } = new();
     public Position Head { get; set; } = new() { X = 50 + Random.Shared.NextDouble(), Y = 50 + Random.Shared.NextDouble() };
 }
