@@ -14,6 +14,9 @@
             <div style="position:absolute;width:100%;text-align:center;font-size:30px;">@Math.Round(game.Rounds.First(r => r.Time > 0).Time, 1)</div>
             <div style="position:absolute;width:100%;display:flex;justify-content:end;font-size:30px;">
                 <div style="position:relative;border-radius:10;background-color:rgba(0, 0, 0, 0.5);width:400px;">
+                    <h2 style="text-align:center;">
+                        Round @(game.Rounds.IndexOf(game.Rounds.First(r => r.Time > 0)) + 1) / @game.Rounds.Count
+                    </h2>
                     @foreach (var (k, v) in game.Rounds.First(r => r.Time > 0).Points.OrderByDescending(p => p.Value))
                     {
                         var style = k == hubConnection.ConnectionId ? "font-weight:800;text-decoration:underline;" : "";
