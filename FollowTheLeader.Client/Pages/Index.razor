@@ -132,8 +132,6 @@ else
         var signalrUrl = Config.GetConnectionString("SignalRUrl");
         hubConnection = new HubConnectionBuilder().WithUrl(signalrUrl!).WithAutomaticReconnect().Build();
 
-        await hubConnection.StartAsync();
-
         hubConnection.On<Game>("Update", (game) =>
         {
             this.game = game;
@@ -190,6 +188,8 @@ else
             }
             return 0;
         });
+
+        await hubConnection.StartAsync();
 
         await hubConnection.SendAsync("Join");
     }
