@@ -101,7 +101,7 @@ else
                                     var style = x.Entry.Key == hubConnection.ConnectionId ? "font-weight:800;text-decoration:underline;" : "";
                                     <div class="row" style="font-family:monospace;width:400px;">
                                         <div class="col" style="@style;color:@game.Players.First(p => p.ConnectionID == x.Entry.Key).Color;">
-                                            <b style="margin-right:10px">@(x.Index + 1).</b> @(game.Players.First(p => p.ConnectionID == x.Entry.Key).Name):
+                                            <nobr><b style="margin-right:10px">@(x.Index + 1).</b> @(game.Players.First(p => p.ConnectionID == x.Entry.Key).Name):</nobr>
                                         </div>
                                         <div class="col">
                                             @x.Entry.Value

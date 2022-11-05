@@ -3,6 +3,7 @@ using FollowTheLeader.Shared;
 using Microsoft.AspNetCore.SignalR;
 using Faker;
 using Faker.Resources;
+using System.Security.Principal;
 
 namespace FollowTheLeader.Server;
 
@@ -128,6 +129,7 @@ public class GameHub : Hub
                         primary.Heading = Math.Atan((primary.Head.X - part.X) / (primary.Head.Y - part.Y));
                         primary.Speed = 10;
                         await Clients.Client(secondary.ConnectionID).SendAsync("Sound", primary.CollideSoundFrequenzy, 1);
+                        await Clients.Client(primary.ConnectionID).SendAsync("Sound", secondary.CollideSoundFrequenzy, 1);
                         MovePlayer(primary);
                     }
                 }
