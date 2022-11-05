@@ -23,7 +23,7 @@ jobs:
         
         # Generate the website
         - name: Publish
-          run: dotnet publish FollowTheLeader.Client/FollowTheLeader.Client.csproj --configuration Release --output build
+          run: dotnet publish FollowTheLeader.Client/FollowTheLeader.Client.csproj --configuration Release /p:EnvironmentName=Productuin --output build
 
         # Publish the website
         - name: GitHub Pages action
