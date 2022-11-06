@@ -25,10 +25,26 @@
                     </h2>
                     @foreach (var (k, v) in game.Rounds.First(r => r.Time > 0).Points.OrderByDescending(p => p.Value))
                     {
+                        var player = game.Players.FirstOrDefault(p => p.ConnectionID == k);
+                        if (player is null) continue;
                         var style = k == hubConnection.ConnectionId ? "font-weight:800;text-decoration:underline;" : "";
                         <div class="row" style="font-family:monospace;width:400px;">
-                            <div class="col" style="@style;color:@game.Players.First(p => p.ConnectionID == k).Color;">
-                                @(game.Players.First(p => p.ConnectionID == k).Name):
+                            <div class="col" style="@style;color:@player.Color;">
+                                @if (k == hubConnection.ConnectionId)
+                                {
+                                    <svg width="30" height="30" viewBox="-2.5 -2.5 5 5">
+                                        <circle stroke="white" stroke-width="0.5" cx="0" cy="0" r="2" fill="@player.Color"></circle>
+                                        <path stroke="black" stroke-width="0.2" fill="@player.DecorationFill" d="M 0 0 @player.Decoration"></path>
+                                    </svg>
+                                }
+                                else
+                                {
+                                    <svg width="30" height="30" viewBox="-2.5 -2.5 5 5">
+                                        <circle cx="0" cy="0" r="2" fill="@player.Color"></circle>
+                                        <path stroke="black" stroke-width="0.2" fill="@player.DecorationFill" d="M 0 0 @player.Decoration"></path>
+                                    </svg>
+                                }
+                                @player.Name:
                             </div>
                             <div class="col">
                                 @v
@@ -50,9 +66,10 @@
                 var isMe = player.ConnectionID == hubConnection.ConnectionId;
                 <path stroke-width="2" stroke="@player.Color" stroke-linecap="round" d="@BodyPath(player.Body.ToArray())" fill="transparent"></path>
                 <circle r="2" fill="@player.Color" cx="@player.Head.X.AsString()" cy="@player.Head.Y.AsString()" stroke="white" stroke-width="@(isMe ? "0.5" : "0")"></circle>
+                <path stroke="black" stroke-width="0.2" fill="@player.DecorationFill" d="M @player.Head.X.AsString() @player.Head.Y.AsString() @player.Decoration"></path>
                 @if (game.Rounds.Any(r => r.Time > 0) && player.ConnectionID == game.Rounds.First(r => r.Time > 0).Leader)
                 {
-                    <path stroke="black" stroke-width="0.5" fill="#FFEB3C" d="M @player.Head.X.AsString() @player.Head.Y.AsString() m -2 -1 l 0 -2 l 1 1 l 1 -1 l 1 1 l 1 -1 l 0 2 l -4 0 Z"></path>
+                    <path stroke="black" stroke-width="0.5" fill="#FFEB3C" d="M @player.Head.X.AsString() @player.Head.Y.AsString() m -2 -1 l 0 -2 l 1 1 l 1 -1 l 1 1 l 1 -1 l 0 2 Z"></path>
                 }
             }
         </svg>
@@ -72,22 +89,32 @@ else
                         <hr />
                     </h2>
                     <h3>
-                        <ul>
-                            @foreach (Player player in game.Players)
-                            {
-                                if (player.ConnectionID == hubConnection.ConnectionId)
+                        @foreach (Player player in game.Players)
+                        {
+                            <div>
+                                @if (player.ConnectionID == hubConnection.ConnectionId)
                                 {
-                                    <li style="color:@player.Color;font-weight:800;text-decoration:underline;">
+                                    <svg width="30" height="30" viewBox="-2.5 -2.5 5 5">
+                                        <circle stroke="white" stroke-width="0.5" cx="0" cy="0" r="2" fill="@player.Color"></circle>
+                                        <path stroke="black" stroke-width="0.2" fill="@player.DecorationFill" d="M 0 0 @player.Decoration"></path>
+                                    </svg>
+                                    <span style="color:@player.Color;font-weight:800;text-decoration:underline;">
                                         @player.Name
-                                        <span @onclick="ReRollMyName">🎲</span>
-                                    </li>
+                                        <span @onclick="ReRoll">🎲</span>
+                                    </span>
                                 }
                                 else
                                 {
-                                    <li style="color:@player.Color;">@player.Name</li>
+                                    <svg width="30" height="30" viewBox="-2.5 -2.5 5 5">
+                                        <circle cx="0" cy="0" r="2" fill="@player.Color"></circle>
+                                        <path stroke="black" stroke-width="0.2" fill="@player.DecorationFill" d="M 0 0 @player.Decoration"></path>
+                                    </svg>
+                                    <span style="color:@player.Color;">
+                                        @player.Name
+                                    </span>
                                 }
-                            }
-                        </ul>
+                            </div>
+                        }
                     </h3>
                 </div>
             </div>
@@ -107,18 +134,21 @@ else
                             <h3>
                                 @foreach (var x in game.ScoreBoard.OrderByDescending(p => p.Value).Select((Entry, Index) => new { Entry, Index }))
                                 {
-                                    if (game.Players.Any(p => p.ConnectionID == x.Entry.Key))
-                                    {
-                                        var style = x.Entry.Key == hubConnection.ConnectionId ? "font-weight:800;text-decoration:underline;" : "";
-                                        <div class="row" style="font-family:monospace;width:400px;">
-                                            <div class="col" style="@style;color:@game.Players.First(p => p.ConnectionID == x.Entry.Key).Color;">
-                                                <nobr><b style="margin-right:10px">@(x.Index + 1).</b> @(game.Players.First(p => p.ConnectionID == x.Entry.Key).Name):</nobr>
-                                            </div>
-                                            <div class="col">
-                                                @x.Entry.Value
-                                            </div>
+                                    var player = game.Players.FirstOrDefault(p => p.ConnectionID == x.Entry.Key);
+                                    if (player is null) continue;
+                                    var style = x.Entry.Key == hubConnection.ConnectionId ? "font-weight:800;text-decoration:underline;" : "";
+                                    <div class="row" style="font-family:monospace;width:400px;">
+                                        <div class="col" style="@style;color:@player.Color;">
+                                            <svg width="30" height="30" viewBox="-2.5 -2.5 5 5">
+                                                <circle cx="0" cy="0" r="2" fill="@player.Color"></circle>
+                                                <path stroke="black" stroke-width="0.2" fill="@player.DecorationFill" d="M 0 0 @player.Decoration"></path>
+                                            </svg>
+                                            <nobr><b style="margin-right:10px">@(x.Index + 1).</b> @player.Name):</nobr>
                                         </div>
-                                    }
+                                        <div class="col">
+                                            @x.Entry.Value
+                                        </div>
+                                    </div>
                                 }
                             </h3>
                         </div>
@@ -141,7 +171,6 @@ else
     Game? game;
     HashSet<string> keys = new();
     List<Obstacle> obstacles = new();
-    bool imStarter;
     bool haveJoined = false;
     double minXWithPadding;
     double minYWithPadding;
@@ -182,10 +211,6 @@ else
                 bgWidth = widthWithPadding;
                 bgY = minYWithPadding;
                 bgHeight = heightWithPadding;
-            }
-            if (game.ScoreBoard is not null)
-            {
-                imStarter = false;
             }
             StateHasChanged();
         });
@@ -233,7 +258,7 @@ else
                 }
                 await hubConnection.SendAsync("Speed", speed);
 
-                if (imStarter)
+                if (game?.Starter == hubConnection.ConnectionId)
                 {
                     if (game.Rounds.Any(r => r.Time > 0))
                     {
@@ -256,7 +281,6 @@ else
         StateHasChanged();
         await Task.Delay(500);
         await svgElement.FocusAsync();
-        imStarter = true;
     }
 
     private void KeyDown(KeyboardEventArgs eventArgs)
@@ -287,8 +311,8 @@ else
         return result;
     }
 
-    private async Task ReRollMyName()
+    private async Task ReRoll()
     {
-        await hubConnection.SendAsync("ReRollName");
+        await hubConnection.SendAsync("ReRoll");
     }
 }

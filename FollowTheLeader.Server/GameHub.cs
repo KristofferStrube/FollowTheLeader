@@ -67,6 +67,7 @@ public class GameHub : Hub
     public async Task StartGame()
     {
         StaticStorage.Games.First().IsStarted = true;
+        StaticStorage.Games.First().Starter = Context.ConnectionId;
         for (int i = 0; i < StaticStorage.Games.First().Players.Count * 2; i++)
         {
             StaticStorage.Games.First().Rounds.Add(new()
@@ -167,21 +168,33 @@ public class GameHub : Hub
         }
     }
 
-    public async Task ReRollName()
+    public async Task ReRoll()
     {
-        var player = StaticStorage.Games.First().Players.First(p => p.ConnectionID == Context.ConnectionId);
+        var game = StaticStorage.Games.First();
+        var player = game.Players.First(p => p.ConnectionID == Context.ConnectionId);
         player.Name = Faker.Name.First();
-        await Clients.All.SendAsync("Update", StaticStorage.Games.First());
+        player.Decoration = Player.Decorations[Random.Shared.Next(Player.Decorations.Count())];
+        player.DecorationFill = Player.Colors[Random.Shared.Next(Player.Colors.Count())];
+        player.Color = $"hsl({Random.Shared.Next(360)}deg 70% 70%)";
+        await Clients.All.SendAsync("Update", game);
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         await base.OnDisconnectedAsync(exception);
-        if (StaticStorage.Games.First().Players.Where(p => p.ConnectionID == Context.ConnectionId).Count() is 0) return;
-        StaticStorage.Games.First().Players.Remove(
-            StaticStorage.Games.First().Players
+        var game = StaticStorage.Games.First();
+        if (game.Players.Where(p => p.ConnectionID == Context.ConnectionId).Count() is 0) return;
+        game.Players.Remove(
+            game.Players
                 .Where(p => p.ConnectionID == Context.ConnectionId)
                 .Single()
             );
+        game.Rounds = game.Rounds.Where(r => r.Leader != Context.ConnectionId).ToList();
+        game.ScoreBoard = game.ScoreBoard?.Where(s => s.Key != Context.ConnectionId).ToDictionary(s => s.Key, s => s.Value);
+        if (game.Starter == Context.ConnectionId && game.Players.Count > 0)
+        {
+            game.Starter = game.Players.First().ConnectionID;
+        }
+        await Clients.All.SendAsync("Update", StaticStorage.Games.First());
     }
 }
