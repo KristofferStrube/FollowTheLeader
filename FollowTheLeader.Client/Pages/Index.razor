@@ -175,6 +175,7 @@ else
     HashSet<string> keys = new();
     List<Obstacle> obstacles = new();
     bool haveJoined = false;
+    bool gameStartedBefore = false;
     double minXWithPadding;
     double minYWithPadding;
     double widthWithPadding;
@@ -191,7 +192,7 @@ else
         var signalrUrl = Environment.IsProduction() ? Config.GetConnectionString("ProductionSignalRUrl") : Config.GetConnectionString("DevelopSignalRUrl");
         hubConnection = new HubConnectionBuilder().WithUrl(signalrUrl!).WithAutomaticReconnect().Build();
 
-        hubConnection.On<Game>("Update", (game) =>
+        hubConnection.On<Game>("Update", async (game) =>
         {
             this.game = game;
             minXWithPadding = game.Players.SelectMany(p => p.Body.Select(b => b.X)).Min() - 10;
@@ -216,6 +217,11 @@ else
                 bgHeight = heightWithPadding;
             }
             StateHasChanged();
+            if (!gameStartedBefore && game.IsStarted) {
+                await Task.Delay(500);
+                await svgElement.FocusAsync();
+            }
+            gameStartedBefore = game.IsStarted;
         });
 
         hubConnection.On("Sound", async (double freq, int durr) =>
