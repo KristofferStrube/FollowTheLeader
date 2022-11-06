@@ -139,11 +139,14 @@ else
                                     var style = x.Entry.Key == hubConnection.ConnectionId ? "font-weight:800;text-decoration:underline;" : "";
                                     <div class="row" style="font-family:monospace;width:400px;">
                                         <div class="col" style="@style;color:@player.Color;">
-                                            <svg width="30" height="30" viewBox="-2.5 -2.5 5 5">
-                                                <circle cx="0" cy="0" r="2" fill="@player.Color"></circle>
-                                                <path stroke="black" stroke-width="0.2" fill="@player.DecorationFill" d="M 0 0 @player.Decoration"></path>
-                                            </svg>
-                                            <nobr><b style="margin-right:10px">@(x.Index + 1).</b> @player.Name):</nobr>
+                                            <nobr>
+                                                <b style="margin-right:10px">@(x.Index + 1).</b>
+                                                <svg width="30" height="30" viewBox="-2.5 -2.5 5 5">
+                                                    <circle cx="0" cy="0" r="2" fill="@player.Color"></circle>
+                                                    <path stroke="black" stroke-width="0.2" fill="@player.DecorationFill" d="M 0 0 @player.Decoration"></path>
+                                                </svg>
+                                                @player.Name:
+                                            </nobr>
                                         </div>
                                         <div class="col">
                                             @x.Entry.Value
