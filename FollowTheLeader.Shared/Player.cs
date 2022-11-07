@@ -22,7 +22,6 @@ public class Player
     public string Color { get; set; } = "black";
     public double Heading { get; set; } = 45;
     public double Speed { get; set; } = 2;
-    public bool IsLeader { get; set; }
     public string Decoration { get; set; } = Decorations[Random.Shared.Next(Decorations.Count())];
     public string DecorationFill { get; set; } = Colors[Random.Shared.Next(Colors.Count())];
     public double MoveSoundFrequenzy { get; set; }

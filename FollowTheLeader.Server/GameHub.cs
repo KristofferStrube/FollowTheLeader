@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.SignalR;
 using Faker;
 using Faker.Resources;
 using System.Security.Principal;
+using System.Xml.Linq;
 
 namespace FollowTheLeader.Server;
 
@@ -66,34 +67,42 @@ public class GameHub : Hub
 
     public async Task StartGame()
     {
-        StaticStorage.Games.First().IsStarted = true;
-        StaticStorage.Games.First().Starter = Context.ConnectionId;
-        for (int i = 0; i < StaticStorage.Games.First().Players.Count * 2; i++)
+        var game = StaticStorage.Games.First();
+        game.IsStarted = true;
+        game.Starter = Context.ConnectionId;
+        game.LastIterate = DateTime.Now;
+        for (int i = 0; i < game.Players.Count * 2; i++)
         {
-            StaticStorage.Games.First().Rounds.Add(new()
+            game.Rounds.Add(new()
             {
-                Leader = StaticStorage.Games.First().Players[i % StaticStorage.Games.First().Players.Count].ConnectionID,
-                Points = StaticStorage.Games.First().Players.ToDictionary(p => p.ConnectionID, _ => 0),
+                Leader = game.Players[i % game.Players.Count].ConnectionID,
+                Points = game.Players.ToDictionary(p => p.ConnectionID, _ => 0),
                 Time = Round.StartTime,
             });
         }
-        foreach (var player in StaticStorage.Games.First().Players)
+        foreach (var player in game.Players)
         {
             player.Head = new() { X = 50 + Random.Shared.NextDouble(), Y = 50 + Random.Shared.NextDouble() };
         }
-        StaticStorage.Games.First().ScoreBoard = null;
-        await Clients.All.SendAsync("Update", StaticStorage.Games.First());
+        game.ScoreBoard = null;
+        await Clients.All.SendAsync("Update", game);
     }
 
     public async Task Iterate()
     {
-        var round = StaticStorage.Games.First().Rounds.FirstOrDefault(r => r.Time > 0);
+        var game = StaticStorage.Games.First();
+        var round = game.Rounds.FirstOrDefault(r => r.Time > 0);
         if (round is null) return;
         Move();
         await Collide();
         GivePoints();
         round.Time -= 0.020m;
-        await Clients.All.SendAsync("Update", StaticStorage.Games.First());
+        if ((DateTime.UtcNow - game.LastIterate).TotalMilliseconds > 50 && game.Players.Count >= 2)
+        {
+            game.Starter = game.Players.Where(p => p.ConnectionID != game.Starter).OrderBy(_ => Guid.NewGuid()).First().ConnectionID;
+        }
+        game.LastIterate = DateTime.UtcNow;
+        await Clients.All.SendAsync("Update", game);
     }
 
     public async Task Stop()

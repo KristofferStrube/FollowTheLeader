@@ -10,7 +10,8 @@ builder.Services.AddCors(options =>
         builder =>
         {
             builder.WithOrigins("null",
-                                "https://localhost:7032");
+                                "https://localhost:7032",
+                                "http://localhost:5001/");
             builder.AllowAnyHeader();
         });
 });
