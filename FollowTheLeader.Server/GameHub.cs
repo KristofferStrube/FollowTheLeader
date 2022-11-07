@@ -98,10 +98,12 @@ public class GameHub : Hub
 
     public async Task Stop()
     {
-        StaticStorage.Games.First().IsStarted = false;
-        StaticStorage.Games.First().ScoreBoard = StaticStorage.Games.First().Players.ToDictionary(p => p.ConnectionID, p => StaticStorage.Games.First().Rounds.Sum(r => r.Points[p.ConnectionID]));
-        StaticStorage.Games.First().Rounds = new List<Round>();
-        await Clients.All.SendAsync("Update", StaticStorage.Games.First());
+        var game = StaticStorage.Games.First();
+        game.IsStarted = false;
+        game.Starter = "";
+        game.ScoreBoard = game.Players.ToDictionary(p => p.ConnectionID, p => game.Rounds.Sum(r => r.Points[p.ConnectionID]));
+        game.Rounds = new List<Round>();
+        await Clients.All.SendAsync("Update", game);
     }
 
     private void Move()
