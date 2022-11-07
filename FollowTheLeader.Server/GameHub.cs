@@ -93,10 +93,13 @@ public class GameHub : Hub
         var game = StaticStorage.Games.First();
         var round = game.Rounds.FirstOrDefault(r => r.Time > 0);
         if (round is null) return;
-        Move();
-        await Collide();
-        GivePoints();
-        round.Time -= 0.020m;
+        for (int i = 0; i < (DateTime.UtcNow - game.LastIterate).TotalMilliseconds; i += 20)
+        {
+            Move();
+            await Collide();
+            GivePoints();
+            round.Time -= 0.020m;
+        }
         if ((DateTime.UtcNow - game.LastIterate).TotalMilliseconds > 50 && game.Players.Count >= 2)
         {
             game.Starter = game.Players.Where(p => p.ConnectionID != game.Starter).OrderBy(_ => Guid.NewGuid()).First().ConnectionID;
