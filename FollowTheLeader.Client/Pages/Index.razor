@@ -222,6 +222,7 @@ else
                 await svgElement.FocusAsync();
             }
             gameStartedBefore = game.IsStarted;
+            Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(game.ScoreBoard));
         });
 
         hubConnection.On("Sound", async (double freq, int durr) =>
